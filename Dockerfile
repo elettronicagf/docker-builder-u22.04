@@ -109,13 +109,15 @@ ENV USER_NAME yocto
 # command with the --build-arg option. By default, they are both 1000. The docker image creates
 # a group with HOST_GID and a user with HOST_UID and adds the user to the group. The symbolic
 # name of the group and user is yocto.
-RUN groupadd -g 1000 $USER_NAME && useradd -g 1000 -m -s /bin/bash -u 1000 $USER_NAME
+ARG host_uid
+ARG host_gid
+RUN groupadd -g ${host_gid} $USER_NAME && useradd -g ${host_gid} -m -s /bin/bash -u ${host_uid} $USER_NAME
 
 #add USER_NAME to sudo
 RUN echo "$USER_NAME:$USER_NAME" | chpasswd && adduser $USER_NAME sudo
 
 # By default, docker runs as root. However, Yocto builds should not be run as root, but as a 
-# normal user. Hence, we switch to the newly created user smartplus.
+# normal user. Hence, we switch to the newly created user.
 USER $USER_NAME
 
 # Create the directory structure for the Yocto build in the container. The lowest two directory
@@ -126,7 +128,12 @@ ENV BUILD_OUTPUT_DIR /home/$USER_NAME/yocto-output
 ENV YOCTO_INPUT_DIR /home/$USER_NAME/yocto-input
 RUN mkdir -p $BUILD_INPUT_DIR $BUILD_OUTPUT_DIR $BUILD_DOWNLOADS_DIR
 
-WORKDIR $BUILD_INPUT_DIR
+ENV SSTATE_MIRROR_DIR /home/$USER_NAME/sstate-mirror
+RUN mkdir -p $SSTATE_MIRROR_DIR
+RUN mkdir /home/$USER_NAME/.yocto
+COPY enable_sstate_mirror.sh /home/$USER_NAME
+
+WORKDIR $YOCTO_INPUT_DIR
 
 SHELL ["/bin/bash", "-c"]
 
